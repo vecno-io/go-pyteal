@@ -10,37 +10,27 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	cfg "github.com/vecno-io/go-pyteal/config"
 )
 
-func Start(c Config) error {
-	if err := setConfig(c); nil != err {
-		return fmt.Errorf("start network: set: %s", err)
-	}
-	if err := verifyNetworkPath(); nil == err {
-		return fmt.Errorf("start network: verify: %s", err)
-	}
+func Start() error {
+	fmt.Println(":: Start network:", cfg.DataPath())
 
-	fmt.Println(":: Start network:", cfg.DataPath)
-	if Testnet == cfg.Type || Mainnet == cfg.Type {
+	if cfg.Testnet == cfg.Target() || cfg.Mainnet == cfg.Target() {
 		return startNetworkPub()
 	}
 	return startNetworkPriv()
 }
 
-func Stop(c Config) error {
-	if err := setConfig(c); nil != err {
-		return fmt.Errorf("stop network: set: %s", err)
-	}
-	if err := verifyNetworkPath(); nil == err {
-		return fmt.Errorf("stop network: verify: %s", err)
-	}
-	fmt.Println(":: Stop network:", cfg.DataPath)
+func Stop() error {
+	fmt.Println(":: Stop network:", cfg.DataPath())
 
 	var cmd string
-	if Testnet == cfg.Type || Mainnet == cfg.Type {
-		cmd = fmt.Sprintf("goal node stop -d %s", cfg.DataPath)
+	if cfg.Testnet == cfg.Target() || cfg.Mainnet == cfg.Target() {
+		cmd = fmt.Sprintf("goal node stop -d %s", cfg.DataPath())
 	} else {
-		cmd = fmt.Sprintf("goal network stop -r %s", cfg.DataPath)
+		cmd = fmt.Sprintf("goal network stop -r %s", cfg.DataPath())
 	}
 
 	fmt.Println(">>", cmd)
@@ -55,20 +45,14 @@ func Stop(c Config) error {
 	return nil
 }
 
-func Status(c Config) error {
-	if err := setConfig(c); nil != err {
-		return fmt.Errorf("status network: set: %s", err)
-	}
-	if err := verifyNetworkPath(); nil == err {
-		return fmt.Errorf("status network: verify: %s", err)
-	}
-	fmt.Println(":: Status network:", cfg.DataPath)
+func Status() error {
+	fmt.Println(":: Status network:", cfg.DataPath())
 
 	var cmd string
-	if Testnet == cfg.Type || Mainnet == cfg.Type {
-		cmd = fmt.Sprintf("goal node status -d %s", cfg.DataPath)
+	if cfg.Testnet == cfg.Target() || cfg.Mainnet == cfg.Target() {
+		cmd = fmt.Sprintf("goal node status -d %s", cfg.DataPath())
 	} else {
-		cmd = fmt.Sprintf("goal network status -r %s", cfg.DataPath)
+		cmd = fmt.Sprintf("goal network status -r %s", cfg.DataPath())
 	}
 
 	fmt.Println(">>", cmd)
@@ -83,33 +67,24 @@ func Status(c Config) error {
 	return nil
 }
 
-func Create(c Config) error {
-	if err := setConfig(c); nil != err {
-		return fmt.Errorf("create network: %s", err)
-	}
-	if _, err := os.Stat(cfg.DataPath); nil == err {
+func Create() error {
+	if _, err := os.Stat(cfg.DataPath()); nil == err {
 		return fmt.Errorf("create network: path already exists")
 	}
-	fmt.Println(":: Create network:", cfg.DataPath)
+	fmt.Println(":: Create network:", cfg.DataPath())
 
-	if Testnet == cfg.Type {
+	if cfg.Testnet == cfg.Target() {
 		return createNetworkPub("genesisfiles/testnet/genesis.json")
-	} else if Mainnet == cfg.Type {
+	} else if cfg.Mainnet == cfg.Target() {
 		return createNetworkPub("genesisfiles/mainnet/genesis.json")
 	}
 	return createNetworkPriv()
 }
 
-func Destroy(c Config) error {
-	if err := setConfig(c); nil != err {
-		return fmt.Errorf("destroy network: %s", err)
-	}
-	if err := verifyNetworkPath(); nil == err {
-		return fmt.Errorf("destroy network: verify: %s", err)
-	}
+func Destroy() error {
+	fmt.Println(":: Destroy network:", cfg.DataPath())
 
-	fmt.Println(":: Destroy network:", cfg.DataPath)
-	if Testnet == cfg.Type || Mainnet == cfg.Type {
+	if cfg.Testnet == cfg.Target() || cfg.Mainnet == cfg.Target() {
 		return destroyNetworkPub()
 	}
 	return destroyNetworkPriv()
@@ -117,7 +92,7 @@ func Destroy(c Config) error {
 
 func IsActive() bool {
 	if _, err := os.Stat(fmt.Sprintf(
-		"%s/algod.pid", cfg.DataPath,
+		"%s/algod.pid", cfg.DataPath(),
 	)); err != nil {
 		return false
 	}
@@ -126,10 +101,10 @@ func IsActive() bool {
 
 func startNetworkPub() error {
 	var url string
-	switch cfg.Type {
-	case Testnet:
+	switch cfg.Target() {
+	case cfg.Testnet:
 		url = "https://algorand-catchpoints.s3.us-east-2.amazonaws.com/channel/testnet/latest.catchpoint"
-	case Mainnet:
+	case cfg.Mainnet:
 		url = "https://algorand-catchpoints.s3.us-east-2.amazonaws.com/channel/mainnet/latest.catchpoint"
 	default:
 		return fmt.Errorf("unsuported network type")
@@ -139,7 +114,7 @@ func startNetworkPub() error {
 		return err
 	}
 
-	cmd := fmt.Sprintf("goal node start -d %s", cfg.DataPath)
+	cmd := fmt.Sprintf("goal node start -d %s", cfg.DataPath())
 	fmt.Println(">>", cmd)
 	out, err := exec.Command("bash", "-c", cmd).Output()
 	if len(out) > 0 {
@@ -150,10 +125,11 @@ func startNetworkPub() error {
 	}
 
 	// Hack, node needs to load
+	fmt.Println(":: Loading catchup target")
 	time.Sleep(5 * time.Second)
 	// Hack, before it can catchup
 
-	cmd = fmt.Sprintf("goal node -d %s catchup %s", cfg.DataPath, point)
+	cmd = fmt.Sprintf("goal node -d %s catchup %s", cfg.DataPath(), point)
 	fmt.Println(">>", cmd)
 	out, err = exec.Command("bash", "-c", cmd).Output()
 	if len(out) > 0 {
@@ -167,7 +143,7 @@ func startNetworkPub() error {
 }
 
 func startNetworkPriv() error {
-	cmd := fmt.Sprintf("goal network start -r %s", cfg.DataPath)
+	cmd := fmt.Sprintf("goal network start -r %s", cfg.DataPath())
 	fmt.Println(">>", cmd)
 	out, err := exec.Command("bash", "-c", cmd).Output()
 	if len(out) > 0 {
@@ -180,16 +156,16 @@ func startNetworkPriv() error {
 }
 
 func createNetworkPub(srcPath string) error {
-	if err := os.Mkdir(cfg.DataPath, 0755); err != nil {
+	if err := os.Mkdir(cfg.DataPath(), 0755); err != nil {
 		return fmt.Errorf("create network: failed to make path %s", err)
 	}
-	source, err := os.Open(fmt.Sprintf("%s/%s", cfg.NodePath, srcPath))
+	source, err := os.Open(fmt.Sprintf("%s/%s", cfg.NodePath(), srcPath))
 	if err != nil {
 		return err
 	}
 	defer source.Close()
 
-	destination, err := os.Create(fmt.Sprintf("%s/genesis.json", cfg.DataPath))
+	destination, err := os.Create(fmt.Sprintf("%s/genesis.json", cfg.DataPath()))
 	if err != nil {
 		return err
 	}
@@ -199,7 +175,7 @@ func createNetworkPub(srcPath string) error {
 	}
 
 	// Enable the developers api to compile teal code
-	cfgFile := fmt.Sprintf("%s/config.json", cfg.DataPath)
+	cfgFile := fmt.Sprintf("%s/config.json", cfg.DataPath())
 	if err := ioutil.WriteFile(
 		cfgFile, []byte(`{"EnableDeveloperAPI":true}`), os.ModePerm,
 	); nil != err {
@@ -209,16 +185,13 @@ func createNetworkPub(srcPath string) error {
 }
 
 func createNetworkPriv() error {
-	cfgFile := fmt.Sprintf("%s/network.json", cfg.NodePath)
-
-	// ToDo pull the info out of the data
-	_, err := loadPrivateNetworkConfig(cfgFile)
-	if nil != err {
-		return err
+	cfgFile := fmt.Sprintf("%s/network.json", cfg.NodePath())
+	if _, err := loadPrivateNetworkConfig(cfgFile); nil != err {
+		return fmt.Errorf("create networ: load config: %s", err)
 	}
 	cmd := fmt.Sprintf(
 		"goal network create -n devnet -t %s -r %s",
-		cfgFile, cfg.DataPath,
+		cfgFile, cfg.DataPath(),
 	)
 	fmt.Println(">>", cmd)
 	out, err := exec.Command("bash", "-c", cmd).Output()
@@ -229,10 +202,10 @@ func createNetworkPriv() error {
 		return err
 	}
 
-	node := NodeConfig{}
+	node := cfg.NodeConfig{}
 	// Enable the developers api to compile teal code
 	// ToDo fix the hard coded node path below, none default
-	cfgFile = fmt.Sprintf("%s/primary/config.json", cfg.DataPath)
+	cfgFile = fmt.Sprintf("%s/primary/config.json", cfg.DataPath())
 	file, err := os.ReadFile(cfgFile)
 	if err := json.Unmarshal(file, &node); nil != err {
 		return err
@@ -247,14 +220,14 @@ func createNetworkPriv() error {
 }
 
 func destroyNetworkPub() error {
-	fmt.Println(">>", fmt.Sprintf("goal network delete -r %s", cfg.DataPath))
-	cmd := fmt.Sprintf("goal network stop -r %s", cfg.DataPath)
+	fmt.Println(">>", fmt.Sprintf("goal network delete -r %s", cfg.DataPath()))
+	cmd := fmt.Sprintf("goal network stop -r %s", cfg.DataPath())
 	exec.Command("bash", "-c", cmd).Output()
-	return os.RemoveAll(cfg.DataPath)
+	return os.RemoveAll(cfg.DataPath())
 }
 
 func destroyNetworkPriv() error {
-	cmd := fmt.Sprintf("goal network delete -r %s", cfg.DataPath)
+	cmd := fmt.Sprintf("goal network delete -r %s", cfg.DataPath())
 	fmt.Println(">>", cmd)
 	out, err := exec.Command("bash", "-c", cmd).Output()
 	if len(out) > 0 {
@@ -290,20 +263,11 @@ func loadPrivateNetworkConfig(filePath string) ([]byte, error) {
 	}
 	defer file.Close()
 
-	if _, err := file.Write(defaultNetworkConfig); err != nil {
+	defaultNetwork := cfg.DefaultNetwork()
+	if _, err := file.Write(defaultNetwork); err != nil {
 		return []byte{}, err
 	}
 	file.Sync()
 
-	return defaultNetworkConfig, nil
-}
-
-func verifyNetworkPath() error {
-	if err := isNodePath(cfg.NodePath); nil != err {
-		return fmt.Errorf("verify network: node path %s", err)
-	}
-	if err := isNetworkPath(cfg.DataPath); nil != err {
-		return fmt.Errorf("verify network: network path %s", err)
-	}
-	return nil
+	return defaultNetwork, nil
 }

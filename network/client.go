@@ -6,23 +6,19 @@ import (
 	"io/ioutil"
 	"strings"
 
+	cfg "github.com/vecno-io/go-pyteal/config"
+
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/client/v2/common"
 	"github.com/algorand/go-algorand-sdk/client/v2/common/models"
 )
 
-func MakeClient(c Config) (*algod.Client, error) {
-	if err := setConfig(c); nil != err {
-		return nil, fmt.Errorf("make client: set: %s", err)
-	}
-	if err := verifyNetworkPath(); nil == err {
-		return nil, fmt.Errorf("make client: verify: %s", err)
-	}
+func MakeClient() (*algod.Client, error) {
+	fmt.Println(":: Network make client:", cfg.DataPath())
 
-	fmt.Println(":: Make client:", cfg.DataPath)
-
-	path := cfg.DataPath
-	if Devnet == cfg.Type {
+	path := cfg.DataPath()
+	// Fix hard coded sub path
+	if cfg.Devnet == cfg.Target() {
 		path += "/primary"
 	}
 
@@ -30,14 +26,14 @@ func MakeClient(c Config) (*algod.Client, error) {
 		"%s/algod.net", path,
 	))
 	if err != nil {
-		return nil, fmt.Errorf("read network file: %v", err)
+		return nil, fmt.Errorf("read network file: %s", err)
 	}
 
 	token, err := getFirstLineFromFile(fmt.Sprintf(
 		"%s/algod.token", path,
 	))
 	if err != nil {
-		return nil, fmt.Errorf("read token file: %v", err)
+		return nil, fmt.Errorf("read token file: %s", err)
 	}
 	return algod.MakeClient("http://"+addr, token)
 }
