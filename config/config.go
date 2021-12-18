@@ -17,14 +17,16 @@ type Setup struct {
 	Target     string `mapstructure:"type"`
 	Timeout    uint32 `mapstructure:"time"`
 	NodePath   string `mapstructure:"node"`
+	AssetPath  string `mapstructure:"data"`
 	Passphrase string `mapstructure:"pass"`
 }
 
 type Config struct {
-	Target   Network
-	Timeout  uint32
-	NodePath string
-	DataPath string
+	Target    Network
+	Timeout   uint32
+	NodePath  string
+	DataPath  string
+	AssetPath string
 }
 
 var cfg = Config{
@@ -45,6 +47,10 @@ func NodePath() string {
 
 func DataPath() string {
 	return cfg.DataPath
+}
+
+func AssetPath() string {
+	return cfg.AssetPath
 }
 
 func OnCreate(s Setup) error {
@@ -88,7 +94,12 @@ func OnInitialize(s Setup, validate bool) error {
 		cfg.NodePath = fmt.Sprintf("%s/node", path)
 	}
 	if err := IsNodePath(cfg.NodePath, cfg.Target); nil != err {
-		return fmt.Errorf("init config: unable to find node: %s", s.NodePath)
+		return fmt.Errorf("init config: invalid node path: %s", err)
+	}
+
+	cfg.AssetPath = s.AssetPath
+	if err := IsAssetPath(cfg.AssetPath, cfg.Target); nil != err {
+		return fmt.Errorf("init config: invalid asset path: %s", err)
 	}
 
 	switch cfg.Target {
@@ -112,33 +123,33 @@ func OnInitialize(s Setup, validate bool) error {
 func IsNodePath(path string, target Network) error {
 	info, err := os.Stat(path)
 	if nil != err {
-		return fmt.Errorf("invalid path: %s", err)
+		return err
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("invalid path: not a directory: %s", path)
+		return fmt.Errorf("not a directory: %s", path)
 	}
 
 	// Check for required tool set
 	info, err = os.Stat(fmt.Sprintf("%s/kmd", path))
 	if nil != err {
-		return fmt.Errorf("invalid path: kmd: %s", err)
+		return fmt.Errorf("kmd: %s", err)
 	}
 	if info.IsDir() {
-		return fmt.Errorf("invalid path: kmd: not a file: %s/algod", path)
+		return fmt.Errorf("kmd: not a file: %s/algod", path)
 	}
 	info, err = os.Stat(fmt.Sprintf("%s/goal", path))
 	if nil != err {
-		return fmt.Errorf("invalid path: goal: %s", err)
+		return fmt.Errorf("goal: %s", err)
 	}
 	if info.IsDir() {
-		return fmt.Errorf("invalid path: goal: not a file: %s/algod", path)
+		return fmt.Errorf("goal: not a file: %s/algod", path)
 	}
 	info, err = os.Stat(fmt.Sprintf("%s/algod", path))
 	if nil != err {
-		return fmt.Errorf("invalid path: algod: %s", err)
+		return fmt.Errorf("algod: %s", err)
 	}
 	if info.IsDir() {
-		return fmt.Errorf("invalid path: algod: not a file: %s/algod", path)
+		return fmt.Errorf("algod: not a file: %s/algod", path)
 	}
 	var file string
 	switch target {
@@ -149,15 +160,42 @@ func IsNodePath(path string, target Network) error {
 	case Mainnet:
 		file = fmt.Sprintf("%s/genesisfiles/mainnet/genesis.json", path)
 	default:
-		return fmt.Errorf("invalid path: unknown target")
+		return fmt.Errorf("unknown target")
 	}
 
 	info, err = os.Stat(file)
 	if nil != err {
-		return fmt.Errorf("invalid path: genesis: %s", err)
+		return fmt.Errorf("genesis: %s", err)
 	}
 	if info.IsDir() {
-		return fmt.Errorf("invalid path: genesis: not a file: %s", file)
+		return fmt.Errorf("genesis: not a file: %s", file)
+	}
+
+	return nil
+}
+
+func IsAssetPath(path string, target Network) error {
+	info, err := os.Stat(path)
+	if nil != err {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("not a directory: %s", path)
+	}
+
+	info, err = os.Stat(fmt.Sprintf("%s/images", path))
+	if nil != err {
+		return fmt.Errorf("images: %s", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("config: not a directory: %s/images", path)
+	}
+	info, err = os.Stat(fmt.Sprintf("%s/contracts", path))
+	if nil != err {
+		return fmt.Errorf("contracts: %s", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("contracts: not a directory: %s/contracts", path)
 	}
 
 	return nil
@@ -166,10 +204,10 @@ func IsNodePath(path string, target Network) error {
 func IsNetworkPath(path string, target Network) error {
 	info, err := os.Stat(path)
 	if nil != err {
-		return fmt.Errorf("invalid path: %s", err)
+		return err
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("invalid path: not a directory: %s", path)
+		return fmt.Errorf("not a directory: %s", path)
 	}
 
 	if Devnet == target {
@@ -178,17 +216,17 @@ func IsNetworkPath(path string, target Network) error {
 	}
 	info, err = os.Stat(fmt.Sprintf("%s/config.json", path))
 	if nil != err {
-		return fmt.Errorf("invalid path: config: %s", err)
+		return fmt.Errorf("config: %s", err)
 	}
 	if info.IsDir() {
-		return fmt.Errorf("invalid path: config: not a file: %s/config.json", path)
+		return fmt.Errorf("config: not a file: %s/config.json", path)
 	}
 	info, err = os.Stat(fmt.Sprintf("%s/genesis.json", path))
 	if nil != err {
-		return fmt.Errorf("invalid path: genesis: %s", err)
+		return fmt.Errorf("genesis: %s", err)
 	}
 	if info.IsDir() {
-		return fmt.Errorf("invalid path: genesis: not a file: %s/genesis.json", path)
+		return fmt.Errorf("genesis: not a file: %s/genesis.json", path)
 	}
 	return nil
 }

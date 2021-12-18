@@ -77,5 +77,5 @@ func getFirstLineFromFile(file string) (string, error) {
 		return "", err
 	}
 	lines := strings.Split(string(addrStr), "\n")
-	return lines[0], err
+	return lines[0], nil
 }

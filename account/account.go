@@ -10,9 +10,8 @@ import (
 )
 
 func Load(name, pass string) (crypto.Account, error) {
-	fmt.Println(":: Load account:", cfg.DataPath())
-
-	path := fmt.Sprintf("%s/%s.acc", cfg.DataPath(), name)
+	path := fmt.Sprintf("%s/accounts/%s.acc", cfg.AssetPath(), name)
+	fmt.Println(":: Load account:", path)
 
 	if !doesAccountExist(path) {
 		return crypto.Account{}, fmt.Errorf("load account: account not found: %s", path)
@@ -27,9 +26,8 @@ func Load(name, pass string) (crypto.Account, error) {
 }
 
 func Create(name, pass string) (crypto.Account, error) {
-	fmt.Println(":: Create account:", cfg.DataPath())
-
-	path := fmt.Sprintf("%s/%s.acc", cfg.DataPath(), name)
+	path := fmt.Sprintf("%s/accounts/%s.acc", cfg.AssetPath(), name)
+	fmt.Println(":: Create account:", path)
 
 	if doesAccountExist(path) {
 		return crypto.Account{}, fmt.Errorf("create account: file exists: %s", path)
