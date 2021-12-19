@@ -43,13 +43,13 @@ func build(name string) error {
 }
 
 func compile(name string) error {
-	path := fmt.Sprintf("%s/contracts/%s", cfg.AssetPath(), name)
-	fmt.Println(">> compile", path)
-
 	cln, err := net.MakeClient()
 	if err != nil {
 		return fmt.Errorf("compile %s failed: make client: %s", name, err)
 	}
+
+	path := fmt.Sprintf("%s/contracts/%s", cfg.AssetPath(), name)
+	fmt.Println(">> compile", path)
 
 	teal, err := ioutil.ReadFile(fmt.Sprintf("%s.teal", path))
 	if err != nil {

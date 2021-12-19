@@ -32,6 +32,14 @@ func GetId(name string) (uint64, error) {
 func Deploy(s Setup) error {
 	optIn := true
 
+	if _, err := os.Stat(fmt.Sprintf(
+		"%s/%s.id",
+		cfg.AssetPath(), s.ApprovalProg),
+	); nil == err {
+		return fmt.Errorf("deploy: %s is already deployed", s.ApprovalProg)
+	}
+	fmt.Println(":: Deploy contract build:", s.ApprovalProg)
+
 	clearProg, err := ioutil.ReadFile(fmt.Sprintf(
 		"%s/contracts/%s.prog", cfg.AssetPath(), s.ClearProg,
 	))
@@ -94,6 +102,7 @@ func Deploy(s Setup) error {
 		return fmt.Errorf("deploy failed: pool error: %s", txConfirm.PoolError)
 	}
 
+	fmt.Printf(">> App deployed with id: %d\n", txConfirm.ApplicationIndex)
 	if err := saveToFile(s.ApprovalProg, txConfirm.ApplicationIndex); err != nil {
 		return fmt.Errorf("contract: failed to save app: %s", err)
 	}
