@@ -11,11 +11,10 @@ import (
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/client/v2/common"
 	"github.com/algorand/go-algorand-sdk/client/v2/common/models"
+	"github.com/algorand/go-algorand-sdk/types"
 )
 
 func MakeClient() (*algod.Client, error) {
-	fmt.Println(":: Network make client:", cfg.DataPath())
-
 	path := cfg.DataPath()
 	// Fix hard coded sub path
 	if cfg.Devnet == cfg.Target() {
@@ -36,6 +35,44 @@ func MakeClient() (*algod.Client, error) {
 		return nil, fmt.Errorf("read token file: %s", err)
 	}
 	return algod.MakeClient("http://"+addr, token)
+}
+
+func MakeTxnParams() (types.SuggestedParams, error) {
+	cln, err := MakeClient()
+	if err != nil {
+		return types.SuggestedParams{}, fmt.Errorf("make client: %s", err)
+	}
+
+	txnParams, err := cln.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return types.SuggestedParams{}, fmt.Errorf("suggested params: %s", err)
+	}
+	return txnParams, nil
+}
+
+func SendRawTransaction(txn []byte) (txInfo models.PendingTransactionInfoResponse, err error) {
+	cln, err := MakeClient()
+	if err != nil {
+		err = fmt.Errorf("make client: %s", err)
+		return
+	}
+
+	pendingTxID, err := cln.SendRawTransaction(txn).Do(context.Background())
+	if err != nil {
+		err = fmt.Errorf("client send: %s", err)
+		return
+	}
+
+	txInfo, err = WaitForConfirmation(cln, pendingTxID, 24, context.Background())
+	if err != nil {
+		err = fmt.Errorf("client wait: %s", err)
+		return
+	}
+	if len(txInfo.PoolError) > 0 {
+		err = fmt.Errorf("txn pool: %s", err)
+		return
+	}
+	return
 }
 
 func WaitForConfirmation(c *algod.Client, txid string, waitRounds uint64, ctx context.Context, headers ...*common.Header) (txInfo models.PendingTransactionInfoResponse, err error) {
